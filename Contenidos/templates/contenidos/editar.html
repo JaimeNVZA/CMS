@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block Titulo %} Editar Contenido{% endblock %} 
+{% block contenido %} 
+<div class="card">
+    <div class="card-header">Editar el contenido</div> 
+    <div class="card-body">
+        <h4 class="card-title">Datos del contenido</h4> 
+        {% include 'contenidos/form.html' %}
+    </div>
+</div>
+{% endblock %}

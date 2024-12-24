@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+
+{% block contenido %}
+    <div class="container">
+        <p class="text-uppercase text-muted" style="font-size: 0.8rem;">
+            {{ contenido.categoria.nombre }}
+        </p>
+
+        <h2>{{ contenido.titulo }} (Borrador)</h2>
+        <div class="card" style="
+            margin: {{ contenido.plantilla.margenes.izq }}px {{ contenido.plantilla.margenes.der }}px {{ contenido.plantilla.margenes.aba }}px {{ contenido.plantilla.margenes.arr }}px;
+            background-color: {{ contenido.plantilla.colorFondo.codigo }};
+        ">
+            <div class="card-body">
+                <div class="contenido">
+                    {{ contenido.contenido|safe }}
+                </div>
+            </div>
+        </div>
+        <br>
+        <div>
+            <!-- Botones de acción -->
+            {% if not perms.Contenidos.can_change_estado and contenido.autor.id == user.id %}
+                <form action="{% url 'enviar_a_revision' contenido.id %}" method="post">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-primary">Enviar a Revisión</button>
+                    <a class="btn btn-secondary" href="{% url 'contenidos' %}" role="button">Salir</a>
+                </form>
+            </form>
+        {% else %}
+            <h6 style="color: brown">Esperando confirmación del autor...</h6>
+            <a class="btn btn-secondary" href="{% url 'contenidos' %}" role="button"
+              >Volver</a
+            >
+        {% endif %}
+        </div>
+        <br>
+{% endblock %}

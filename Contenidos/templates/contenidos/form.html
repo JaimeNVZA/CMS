@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editor de Contenido</title>
+    <style>
+        #editor {
+            height: 300px; 
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            padding: 10px;
+        }
+        #toolbar {
+            margin-bottom: 10px;
+        }
+        img {
+            max-width: 100%; /* Asegura que la imagen no se desborde */
+            height: auto; /* Mantiene la relación de aspecto */
+            display: block; /* Hace que la imagen esté en una nueva línea */
+        }
+        input{
+            width: 100%; /* Ocupa todo el ancho disponible */
+            padding: 10px; /* Espaciado interno */
+            font-size: 16px; /* Tamaño de fuente para el input */
+            border: 1px solid #ccc; /* Borde ligero */
+            border-radius: 5px; /* Bordes redondeados */
+            box-sizing: border-box; /* Asegura que el padding no desborde el input */
+        }
+        select{
+            width: 100%; /* Ocupa todo el ancho disponible */
+            padding: 10px; /* Espaciado interno */
+            font-size: 16px; /* Tamaño de fuente para el input */
+            border: 1px solid #ccc; /* Borde ligero */
+            border-radius: 5px; /* Bordes redondeados */
+            box-sizing: border-box; /* Asegura que el padding no desborde el input */
+        }
+        #fileInput{
+            padding: 0;
+            margin: 0;
+            width: 50%;
+        }
+    </style>
+</head>
+<body>
+    <h1></h1>
+    
+    <form enctype="multipart/form-data" method="post" onsubmit="return confirmarEnvio();">
+        {% csrf_token %}
+        
+        <!-- Otros campos del formulario -->
+        {% for campo in formulario %}
+            {% if campo.name != 'contenido' and campo.name != 'autor' %}
+                <div class="mb-3">
+                    <label for="{{ campo.id_for_label }}" class="form-label">
+                        {{ campo.label }} 
+                        {% if campo.label == 'Subcategoría' or campo.label == 'Plantilla' %}
+                            (opcional)
+                        {% endif %}
+                    </label>
+        
+                    {% if campo.name != 'estado' or perms.Contenidos.can_change_estado %}
+                        {{ campo }}
+                    {% else %}
+                        <select disabled>
+                            <option value="3" selected>Borrador</option>
+                        </select>  
+                        <!-- Campo oculto para enviar el valor seleccionado del estado -->
+                        <input type="hidden" name="{{ campo.name }}" value="3">
+                    {% endif %}
+                </div>
+                <div class="col-12 help-text">{{ campo.errors }}</div>
+            {% endif %}
+        {% endfor %}
+    
+        
+        <!-- Editor de texto con opciones de formato -->
+        <div class="mb-3 contenido-editor">
+            <label for="contenido" class="form-label">Contenido:</label>
+            <div id="toolbar">
+                <button type="button" onclick="formatText('bold')"><b>Negrita</b></button>
+                <button type="button" onclick="formatText('italic')"><i>Cursiva</i></button>
+                <button type="button" onclick="formatText('underline')"><u>Subrayado</u></button>
+                <button type="button" onclick="saveText()">Guardar</button>
+                <input type="file" id="fileInput" accept="image/*,text/plain" />
+                <button type="button" onclick="loadFromFile()">Cargar</button>
+            </div>
+            <div id="editor" contenteditable="true">
+                {{ formulario.instance.contenido|safe }}
+            </div>
+            <input type="hidden" id="editorContent" name="contenido" />
+            <!-- para mostrar errores despues de enviar el formulario-->
+            <div class="text-danger">{{ formulario.contenido.errors }}</div>
+
+        </div>
+        
+        <!-- Botones de acción -->
+        <button type="submit" class="btn btn-primary" onclick="updateEditorContent()">Guardar {% if not perms.Contenidos.can_change_estado %} borrador {% endif %} </button>
+        <a class="btn btn-secondary" href="{% url 'contenidos' %}" role="button">Cancelar</a>
+
+        <script>
+            function confirmarEnvio() {
+                return confirm("¿Estás seguro de que deseas realizar esta acción?");
+            }
+
+            function formatText(command) {
+                document.execCommand(command, false, null);
+            }
+
+            function saveText() {
+                const text = document.getElementById("editor").innerHTML;
+                localStorage.setItem("text", text);
+                alert("Texto guardado");
+            }
+
+            function loadFromFile() {
+    const fileInput = document.getElementById("fileInput");
+    const file = fileInput.files[0];
+
+    if (file) {
+        const reader = new FileReader();
+
+        reader.onload = function(e) {
+            const content = e.target.result; // Contenido del archivo leído
+            const fileType = file.type; // Tipo de archivo
+
+            if (fileType.startsWith('image/')) {
+                // Si es una imagen, crear un elemento <img>
+                const img = document.createElement('img');
+                img.src = content;
+                document.getElementById("editor").appendChild(img);
+            } else if (fileType === 'text/plain') {
+                // Si es un archivo de texto
+                document.getElementById("editor").innerText = content; // Actualiza el editor con el contenido de texto
+            } else {
+                alert("Tipo de archivo no soportado.");
+            }
+        };
+
+        // Cargar archivo según su tipo
+        if (file.type.startsWith('image/')) {
+            reader.readAsDataURL(file); // Cargar imagen
+        } else if (file.type === 'text/plain') {
+            reader.readAsText(file); // Cargar archivo de texto
+        } else {
+            alert("Por favor selecciona un archivo de imagen o texto."); // Mensaje si el tipo no es soportado
+        }
+    } else {
+        alert("Por favor selecciona un archivo"); // Mensaje si no hay archivo seleccionado
+    }
+}
+
+            function updateEditorContent() {
+                const editorContent = document.getElementById("editor").innerHTML;
+                document.getElementById("editorContent").value = editorContent;  // Copia el contenido editable al campo oculto
+            }
+
+            
+
+            // Cargar subcategorías cuando cambie la categoría seleccionada
+            document.getElementById('categoria-select').addEventListener('change', function() {
+                cargarSubcategorias(this.value);
+            });
+
+            // Función para cargar las subcategorías
+            function cargarSubcategorias(categoriaId) {
+                var url = "{% url 'ajax_load_subcategorias' %}?categoria_id=" + categoriaId;
+                var subcategoriaSelect = document.getElementById('subcategoria-select');
+
+                // Limpiar las opciones existentes antes de cargar las nuevas
+                subcategoriaSelect.innerHTML = '';
+
+                fetch(url)
+                    .then(response => response.json())
+                    .then(data => {
+                        // Crear una opción vacía por defecto
+                        var defaultOption = document.createElement('option');
+                        defaultOption.value = '';
+                        defaultOption.text = 'Selecciona una subcategoría';
+                        subcategoriaSelect.appendChild(defaultOption);
+
+                        // Añadir las nuevas opciones
+                        data.forEach(function(subcategoria) {
+                            var option = document.createElement('option');
+                            option.value = subcategoria.id;
+                            option.text = subcategoria.nombre;
+                            subcategoriaSelect.appendChild(option);
+                        });
+
+                        // Si ya había una subcategoría seleccionada, restaurar la selección
+                        var subcategoriaSeleccionada = "{{ formulario.instance.subcategoria.id }}";
+                        if (subcategoriaSeleccionada) {
+                            subcategoriaSelect.value = subcategoriaSeleccionada;
+                        }
+                    });
+            }
+
+            // Verificar si hay una categoría seleccionada al cargar la página
+            window.onload = function() {
+                var categoriaSeleccionada = "{{ formulario.instance.categoria.id }}";
+                if (categoriaSeleccionada) {
+                    cargarSubcategorias(categoriaSeleccionada); // Cargar subcategorías de la categoría seleccionada
+                }
+            };
+        </script>
+    </form>
+</body>
+</html>
