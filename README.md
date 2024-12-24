@@ -29,4 +29,4 @@ Sistema de gestión de contenidos
      ```
    - Dirígete a la URL `http://localhost:8000` en tu navegador para acceder al programa.
 
-Listo, Ahora el proyecto debería estar funcionando en tu entorno local!.
+Listo, Ahora el proyecto debería estar funcionando en tu entorno local!
